@@ -236,6 +236,28 @@ sprintf("The number of genes passing correction: %i",
 
 ```
 
+```{r message=FALSE, warning=FALSE, error=FALSE}
+#library(edgeR)
+library(limma)
+
+# Create MAPlot
+topfit_results <- topfit[rownames(minimalSet),]
+topfit_status <- apply(topfit_results, 1, function(gene) {
+  if (gene["logFC"] < 0 && gene["adj.P.Val"] < 0.05) {
+    return("Down-regulated genes")
+  } else if (gene["logFC"] > 0 && gene["adj.P.Val"] < 0.05) {
+    return("Up-regulated genes")
+  } else {
+    return("Not differentially expressed")
+  }
+})
+
+#qlf_output_hits_status
+
+limma::plotMD(fit2, column = ncol(fit2), status = topfit_status,
+              cex = 0.5, main = "MAplot of replication in Limma")
+```
+
 As the number of tests performed increases the likelihood that a positive results will occur simply by chance increases, it should be controlled for family-wise error rate or for false discovery rate. 
 
 Hence, I try to improve the results if we account for the replicate variability.
@@ -280,6 +302,29 @@ sprintf("The number of genes passing correction: %i",
         as.integer(length(which(output_hits_rep$adj.P.Val < 0.05 ))))
 ```
 The thresholds of p-value for both models are set as 0.05 to adjust the p-values to account for the fact that each time there is a 5% chance my finding is obtained by chance.
+
+```{r message=FALSE, warning=FALSE, error=FALSE}
+#library(edgeR)
+library(limma)
+
+# Create MAPlot
+topfit_rep_results <- topfit_rep[rownames(minimalSet),]
+topfit_rep_status <- apply(topfit_rep_results, 1, function(gene) {
+  if (gene["logFC"] < 0 && gene["adj.P.Val"] < 0.05) {
+    return("Down-regulated genes")
+  } else if (gene["logFC"] > 0 && gene["adj.P.Val"] < 0.05) {
+    return("Up-regulated genes")
+  } else {
+    return("Not differentially expressed")
+  }
+})
+
+limma::plotMD(fit2_rep, column = ncol(fit2_rep), status = topfit_rep_status, 
+              cex = 0.5,
+              main = "MAplot of replication in Limma")
+
+
+```
 
 Compare the results from these two models by plot. Note that all p-values are initialized as ___black___. All p-value in the first model passing the threshold p-vale < 0.05 is colored in ___orange___, and the ones in the second model is colored in ___blue___. The genes passing both models are colored in ___red___. 
 ```{r}
@@ -363,15 +408,43 @@ qlf.cell_line_sub <- edgeR::glmQLFTest(fit, coef = 'samples$cell_line_subtypeMDA
 qlf_output_hits <- edgeR::topTags(qlf.cell_line_sub, sort.by = "PValue",
                                   n = nrow(normalized_count_data))
 
+sprintf("The number of genes: %i",
+        nrow(qlf.cell_line_sub))
+
 sprintf("The number of genes passing the threshold p-value < 0.05: %i", 
         length(which(qlf_output_hits$table$PValue < 0.05)))
 
 sprintf("The number of genes passing correction: %i", 
         length(which(qlf_output_hits$table$FDR < 0.05)))
+
+```
+
+```{r message=FALSE, warning=FALSE, error=FALSE}
+# MAPlot
+#library(edgeR)
+library(limma)
+
+qlf_results <- qlf.cell_line_sub[rownames(minimalSet),]
+
+qlf_status <- apply(qlf_results$table, 1, function(gene) {
+  if (gene["logFC"] < 0 && gene["PValue"] < 0.05) {
+    return("Down-regulated genes")
+  } else if (gene["logFC"] > 0 && gene["PValue"] < 0.05) {
+    return("Up-regulated genes")
+  } else {
+    return("Not differentially expressed")
+  }
+})
+
+#qlf_output_hits_status
+limma::plotMD(fit, column = ncol(fit), status = qlf_status,
+              cex = 0.5, 
+              main = "MAplot of cell-line subtypes")
 ```
 
 Compare the result of this model to the result of cell line subtype model, which are the comparison of limma and quasi likelihood.
 ```{r}
+
 qlf_model_pvalues <- data.frame(ensembl_id = rownames(qlf_output_hits),
                                 qlf_pvalues = qlf_output_hits$table$PValue)
 
@@ -392,11 +465,13 @@ two_models_pvalues_lq$color[which(two_models_pvalues_lq$qlf_pvalues < 0.05 & two
 
 #length(which(two_models_pvalues$qlf_pvalues < 0.05 & two_models_pvalues$limma_pvalues < 0.05))
 
-# MAPlot
+# Plot
 plot(two_models_pvalues_lq$qlf_pvalues, two_models_pvalues_lq$limma_pvalues,
      col = two_models_pvalues_lq$color,
      xlab = "QLF model p-values", ylab = "Limma model p-values",
      main = "QLF vs Limma")
+
+
 
 ```
 It shows that most of p-values for each gene in two models are divergent. 
